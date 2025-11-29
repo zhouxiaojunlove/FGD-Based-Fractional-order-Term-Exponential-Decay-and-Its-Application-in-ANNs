@@ -35,34 +35,12 @@ class Fractional_Order_Matrix_Differential_Solver(torch.autograd.Function):
 
     @staticmethod
     def Fractional_Order_Matrix_Differential_Linear(xs,ws,b,alpha,k,epoch):
-        if xs.dim() == 2:
-            #w
-            wf = ws[:,0].view(1,-1)
-            #main
-            w_main = torch.mul(xs,(torch.abs(wf)+1e-8)**(1-alpha)/gamma(2-alpha))
-            #partial
-            x_rows, x_cols = xs.size()
-            bias = torch.full((x_rows, x_cols),b[0].item())
-            bias = bias.to(device)
-            w_partial = torch.mul(torch.mm(xs,wf.T).view(-1,1).expand(-1,x_cols) - torch.mul(xs,wf) + bias, torch.sgn(wf)*(torch.abs(wf)+1e-8)**(-alpha)/gamma(1-alpha))
-            return ws.T, (w_main + torch.exp(-k*epoch)*w_partial).T
-        else:
-            mat_list_x = []
-            for jj in range(xs.shape[0]):
-                #w
-                xs_jj = xs[jj]
-                wf = ws[:,0].view(1,-1)
-                #main
-                w_main = torch.mul(xs_jj,(torch.abs(wf)+1e-8)**(1-alpha)/gamma(2-alpha))
-                #partial
-                x_rows, x_cols = xs_jj.size()
-                bias = torch.full((x_rows, x_cols),b[0].item())
-                bias = bias.to(device)
-                w_partial = torch.mul(torch.mm(xs_jj,wf.T).view(-1,1).expand(-1,x_cols) - torch.mul(xs_jj,wf) + bias, torch.sgn(wf)*(torch.abs(wf)+1e-8)**(-alpha)/gamma(1-alpha))
-
-                mat_list_x.append((w_main + torch.exp(-k*epoch)*w_partial).T)
-            
-            return ws.T, torch.stack(mat_list_x)
+        wf = ws[:,0].view(1,-1)
+        #main
+        w_main = torch.mul(xs,(torch.abs(wf)+1e-8)**(1-alpha)/gamma(2-alpha))
+        #partial
+        w_partial = torch.mul((xs@wf.T).expand(xs.shape) - torch.mul(xs,wf) + b[0], torch.sgn(wf)*(torch.abs(wf)+1e-8)**(-alpha)/gamma(1-alpha))
+        return ws.T, (w_main + torch.exp(-k*epoch)*w_partial).transpose(-2,-1)
 
 class FLinear(nn.Module):
     
